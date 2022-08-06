@@ -1,9 +1,6 @@
+import collections
 import json
-import os
 import sys
-
-KEY1 = 'SrcMoveId'
-KEY2 = 'name'
 
 keys = [
     "standing",
@@ -72,9 +69,9 @@ class MoveDependencies:
         self.__dstMvst = dstMvst
         self.__moveName = targetMoveName
         self.__srcMoveId = getMoveID(self.__srcMvst, self.__moveName)
-        self.__dependentMoves = []
+        self.__dependency_name_id = {}  # KEY: moveName VALUE: moveID
+        self.__dependent_id_name = {}  # KEY: moveID VALUE: moveName
         self.__checkDependencies(self.__srcMoveId)
-        self.__dependentMoves.sort(key=lambda d: list(d.values())[0])
 
     def __checkDependencies(self, moveID: int):
         self.__getTransitionDependencies(moveID)
@@ -82,7 +79,12 @@ class MoveDependencies:
         self.__getReactionListDependencies(moveID)
 
     def getDependencies(self):
-        return self.__dependentMoves
+        self.__dependency_name_id = collections.OrderedDict(
+            sorted(self.__dependency_name_id.items()))
+        self.__dependent_id_name = collections.OrderedDict(
+            sorted(self.__dependent_id_name.items()))
+
+        return self.__dependency_name_id, self.__dependent_id_name
 
     def getMoveName(self):
         return self.__moveName
@@ -103,10 +105,9 @@ class MoveDependencies:
         # if transitioned value doesn't exist, add it to list of dependencies
         if nextMoveId == -1:
             # if not, add it's name within dependencies
-            if nextMoveName not in [value for elem in self.__dependentMoves
-                                    for value in elem.values()]:
-                self.__dependentMoves.append(
-                    {KEY1: transition, KEY2: nextMoveName})
+            if nextMoveName not in self.__dependency_name_id:
+                self.__dependency_name_id[nextMoveName] = transition
+                self.__dependent_id_name[transition] = nextMoveName
 
                 # recursive re-call for the move we just found
                 self.__checkDependencies(nextMoveId)
@@ -140,10 +141,9 @@ class MoveDependencies:
             if getMoveID(self.__dstMvst, nextMoveName) == -1:
 
                 # if not, add it's name within dependencies
-                if nextMoveName not in [value for elem in self.__dependentMoves
-                                        for value in elem.values()]:
-                    self.__dependentMoves.append(
-                        {KEY1: nextMoveId, KEY2: nextMoveName})
+                if nextMoveName not in self.__dependency_name_id:
+                    self.__dependency_name_id[nextMoveName] = nextMoveId
+                    self.__dependent_id_name[nextMoveId] = nextMoveName
 
                     # recursive re-call for the move we just found
                     self.__checkDependencies(nextMoveId)
@@ -179,12 +179,13 @@ class MoveDependencies:
 
                 # Checking if that move exists within destination movelist
                 if nextMoveId == -1:
+                    # Storing ID of the reaction list key into 'nextMoveId'
                     nextMoveId = reactionList[key]
                     # if not, add it's name within dependencies
-                    if nextMoveName not in [value for elem in self.__dependentMoves
-                                            for value in elem.values()]:
-                        self.__dependentMoves.append({
-                            KEY1: reactionList[key], KEY2: nextMoveName})
+                    if nextMoveId not in self.__dependency_name_id:
+                        self.__dependent_id_name[reactionList[key]
+                                                 ] = nextMoveName
+                        self.__dependency_name_id[nextMoveName] = reactionList[key]
 
                         # recursive re-call for the move we just found
                         self.__checkDependencies(nextMoveId)
@@ -197,12 +198,13 @@ class MoveDependencies:
 
 
 def getMoveDependencies(sourceMvst, destMvst, targetMoveName):
-    moveDependencies = MoveDependencies(
+    moveDependency_name_id, moveDependency_id_name = MoveDependencies(
         sourceMvst, destMvst, targetMoveName).getDependencies()
     print(
         "%s -> %s : Copying move \"%s\"" % (sourceMvst['character_name'], destMvst['character_name'], targetMoveName))
-    for dep in moveDependencies:
-        print("ID in source moveset: %4d\tName: %s" % (dep[KEY1], dep[KEY2]))
+    for _, key in enumerate(moveDependency_name_id):
+        # print("ID in source moveset: %4d\tName: %s" % (dep[KEY1], dep[KEY2]))
+        print(moveDependency_name_id[key], '->', key)
 
 
 def main():
@@ -212,21 +214,23 @@ def main():
         print('2 = Desination Moveset')
         print('3 = Name of Move to Import')
         return
+
+    if sys.argv[1] == None:
+        print('Source moveset not passed')
+        return
+
+    if sys.argv[2] == None:
+        print('Destination moveset not passed')
+        return
+
+    if sys.argv[3] == None:
+        print('Target move not passed')
+        return
+
     srcMvst = sys.argv[1]
     dstMvst = sys.argv[2]
     movName = sys.argv[3]
 
-    if srcMvst == None:
-        print('Source moveset not passed')
-        return
-
-    if dstMvst == None:
-        print('Destination moveset not passed')
-        return
-
-    if movName == None:
-        print('Target move not passed')
-        return
     getMoveDependencies(srcMvst, dstMvst, movName)
 
 
