@@ -79,10 +79,10 @@ class MoveDependencies:
         self.__getReactionListDependencies(moveID)
 
     def getDependencies(self):
-        self.__dependency_name_id = collections.OrderedDict(
-            sorted(self.__dependency_name_id.items()))
-        self.__dependent_id_name = collections.OrderedDict(
-            sorted(self.__dependent_id_name.items()))
+        # self.__dependency_name_id = collections.OrderedDict(
+        #     sorted(self.__dependency_name_id.items()))
+        # self.__dependent_id_name = collections.OrderedDict(
+        #     sorted(self.__dependent_id_name.items()))
 
         return self.__dependency_name_id, self.__dependent_id_name
 
@@ -195,52 +195,3 @@ class MoveDependencies:
 
             hit_cond_idx += 1
         return
-
-
-def getMoveDependencies(sourceMvst, destMvst, targetMoveName):
-    moveDependency_name_id, moveDependency_id_name = MoveDependencies(
-        sourceMvst, destMvst, targetMoveName).getDependencies()
-    print(
-        "%s -> %s : Copying move \"%s\"" % (sourceMvst['character_name'], destMvst['character_name'], targetMoveName))
-    for _, key in enumerate(moveDependency_name_id):
-        # print("ID in source moveset: %4d\tName: %s" % (dep[KEY1], dep[KEY2]))
-        print(moveDependency_name_id[key], '->', key)
-
-
-def main():
-    if len(sys.argv) < 4:
-        print('Parameters:')
-        print('1 = Source Moveset')
-        print('2 = Desination Moveset')
-        print('3 = Name of Move to Import')
-        return
-
-    if sys.argv[1] == None:
-        print('Source moveset not passed')
-        return
-
-    if sys.argv[2] == None:
-        print('Destination moveset not passed')
-        return
-
-    if sys.argv[3] == None:
-        print('Target move not passed')
-        return
-
-    srcMvst = sys.argv[1]
-    dstMvst = sys.argv[2]
-    movName = sys.argv[3]
-
-    getMoveDependencies(srcMvst, dstMvst, movName)
-
-
-def test():
-    srcMvst = loadJson('./tag2_JIN.json')
-    dstMvst = loadJson('./t7_JIN.json')
-    movName = 'Jz_sKAM01_'
-    getMoveDependencies(srcMvst, dstMvst, movName)
-
-
-if __name__ == '__main__':
-    # main()
-    test()
