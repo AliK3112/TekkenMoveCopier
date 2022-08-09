@@ -84,8 +84,19 @@ def getExtrapropsList(moveset, idx):
     return list
 
 
+# Find idx of the cancel extradata. Take tag2 extradata value and find it's index in T7 moveset
+def findExtradataIndex(extradata_value: int, moveset: dict):
+    for i, j in enumerate(moveset['cancel_extradata']):
+        if j == extradata_value:
+            return i
+
+    # Add if it doesn't exist, add it
+    moveset['cancel_extradata'].append(extradata_value)
+    return len(moveset['cancel_extradata'])
+
+
 class MoveCopier:
-    def __init__(self, sourceMvst, dstMvst, dependency_name_id, dependency_id_name):
+    def __init__(self, sourceMvst: dict, dstMvst: dict, dependency_name_id: dict, dependency_id_name: dict):
         if sourceMvst == None:
             raise BaseException('Source Moveset Empty')
         if dstMvst == None:
@@ -119,8 +130,35 @@ class MoveCopier:
             self.updateTransition(src_move_id, indexesOfAddedMoves[i])
 
         # Copying tag 2 cancels to put into T7
-        # for _, src_move_id in enumerate(self.__dependent_id_name):
-        #     copyCancels(src_move_id)
+        for i, src_move_id in enumerate(self.__dependent_id_name):
+            # Get source move
+            src_move = self.__srcMvst['moves'][src_move_id]
+
+            # Get new move
+            new_move_id = indexesOfAddedMoves[i]
+            new_move = self.__dstMvst['moves'][new_move_id]
+
+            # if their names aren't equal, break
+            if src_move['name'] != new_move['name']:
+                print('move Name not equal\nSource: %s\n New: %s' %
+                      (src_move['name'], new_move['name']))
+                break
+
+            # Get cancel index of src move
+            src_move_cancel_idx = new_move['cancel_idx']
+
+            # Set index to last cancel
+            new_move_cancel_idx = len(self.__dstMvst['cancels'])
+
+            # Copy Cancels
+            size_of_new_cancel_list = self.copyCancelList(src_move_cancel_idx)
+
+            # Assigning index to move whose cancel list was just created
+            self.__dstMvst['moves'][new_move_id]['cancel_idx'] = new_move_cancel_idx
+
+            # Adjusting rest of the cancels
+            for j in range(new_move_id+1, len(self.__dstMvst['moves'])):
+                self.__dstMvst['moves'][j]['cancel_idx'] += size_of_new_cancel_list
 
         return
 
@@ -133,7 +171,7 @@ class MoveCopier:
             self.__dstMvst, getMoveName(self.__srcMvst, new_move['transition']))
         return
 
-    def softCopyMove(self, move_id):
+    def softCopyMove(self, move_id: int):
         src_move = self.__srcMvst['moves'][move_id]
 
         # Creating a deep copy of Tag 2 move
@@ -194,6 +232,46 @@ class MoveCopier:
         new_move['extra_properties_idx'] = new_index
         for i in new_props_list:
             self.__dstMvs['extra_move_properties'].append(i)
+
+    def updateMoveIDs(self, new_cancel):
+        if (new_cancel['command'] == 0x800b):
+            return
+
+        if new_cancel['move_id'] >= 0x8000:
+            return
+
+        new_cancel['move_id'] = getMoveID(
+            self.__dstMvst, getMoveName(self.__srcMvst, new_cancel['move_id']))
+        return
+
+    def copyCancelList(self, src_cancel_idx: int):
+        count = 0
+        while True:
+            src_cancel = self.__srcMvst['cancels'][src_cancel_idx]
+            new_cancel = deepcopy(src_cancel)
+
+            # Check if it is an input sequence or group cancel
+            # TODO
+
+            # Update extradata
+            extradata_value = src_cancel['cancel_extradata'][new_cancel['extradata_idx']]
+            new_cancel['extradata_idx'] = findExtradataIndex(
+                extradata_value, self.__dstMvst)
+
+            # Update move ID
+            self.updateMoveIDs(new_cancel)
+
+            # Update requirement_idx
+            # TODO
+
+            self.__dstMvst['cancels'].append(new_cancel)
+
+            src_cancel_idx += 1
+            count += 1
+
+            if new_cancel['command'] == 0x8000:
+                break
+        return count
 
 
 def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
