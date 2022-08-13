@@ -21,13 +21,27 @@ keys = [
 ]
 
 
-def loadJson(filename):
+def loadJson(filepath):
     try:
-        with open(filename) as f:
+        with open(filepath) as f:
             data = json.load(f)
     except FileNotFoundError:
         data = None
     return data
+
+
+def search(pat, txt):
+    M = len(pat)
+    N = len(txt)
+    for i in range(N - M + 1):
+        j = 0
+        while(j < M):
+            if (txt[i + j] != pat[j]):
+                break
+            j += 1
+        if (j == M):
+            return i
+    return -1
 
 
 def isSame(moveset1, moveset2):
@@ -48,7 +62,7 @@ def getMoveName(moveset, move_id: int):
     return moveset['moves'][move_id]['name']
 
 
-def getMoveID(moveset, movename, start=0):
+def getMoveID(moveset, movename: str, start=0):
     n = len(moveset['moves'])
     start = 0 if (start >= n or start < 0) else start
     for i in range(start, n):
@@ -57,7 +71,7 @@ def getMoveID(moveset, movename, start=0):
     return -1
 
 
-def getVoiceclipList(moveset, idx):
+def getVoiceclipList(moveset, idx: int) -> list:
     list = []
     i = idx
     while True:
@@ -73,12 +87,32 @@ def isLast(prop):
     return 0 == prop['id'] and 0 == prop['type'] and 0 == prop['value']
 
 
-def getExtrapropsList(moveset, idx):
+def getExtrapropsList(moveset, idx: int) -> list:
     list = []
     while True:
         prop = moveset['extra_move_properties'][idx]
         list.append(prop)
         if isLast(prop):
+            break
+        idx += 1
+    return list
+
+
+def getInputSequence(moveset, idx: int) -> list:
+    seq = deepcopy(moveset['input_sequences'][idx])
+    start = seq['extradata_idx']
+    end = start + seq['u2']
+    list = moveset['input_extradata'][start: end]
+    seq['inputs'] = list
+    return seq
+
+
+def getReqList(moveset, idx: int) -> list:
+    list = []
+    while True:
+        reqObj = moveset['requirements'][idx]
+        list.append(reqObj)
+        if (reqObj['req'] == 881):  # TODO: Replace 881 with game end req val
             break
         idx += 1
     return list
@@ -180,8 +214,7 @@ class MoveCopier:
         # Assigning attributes to this new move
         new_move['hit_condition_idx'] = 0
         new_move['extra_properties_idx'] = -1
-        new_move['u8'] = len(self.__dstMvst['moves']) - 8
-        new_move['u8_2'] = 9
+        new_move['u8'] = len(self.__dstMvst['moves']) - new_move['u8_2'] + 2
 
         # Assigning idx
         new_move['cancel_idx'] = len(self.__dstMvst['cancels'])
@@ -233,7 +266,11 @@ class MoveCopier:
         for i in new_props_list:
             self.__dstMvs['extra_move_properties'].append(i)
 
-    def updateMoveIDs(self, new_cancel):
+    def createRequirementsList(self, reqList):
+        idx = search(reqList, self.__dstMvst['requirements'])
+        return
+
+    def updateMoveID(self, new_cancel):
         if (new_cancel['command'] == 0x800b):
             return
 
@@ -244,6 +281,31 @@ class MoveCopier:
             self.__dstMvst, getMoveName(self.__srcMvst, new_cancel['move_id']))
         return
 
+    def checkCommand(self, command):
+        # If Group cancel, just skip it.
+        # TODO: Figure out group cancel aliases and apply them
+        if command == 0x800b:
+            return True
+
+        # If input sequence.
+        if 0x800d <= command <= 0x81ff:
+            inputSeq = getInputSequence(self.__srcMvst, command - 0x800d)
+            self.createInputSequence(inputSeq)
+            return True
+        return False
+
+    def createInputSequence(self, inputSeq):
+        inputExtras = self.__dstMvst['input_extradata']
+        last = inputExtras.pop()
+        idx = len(inputExtras)
+        for i in inputSeq['inputs']:
+            inputExtras.append(i)
+        inputExtras.append(last)
+        del inputSeq['inputs']
+        inputSeq['extradata_idx'] = idx
+        self.__dstMvst['input_sequences'].append(inputSeq)
+        return
+
     def copyCancelList(self, src_cancel_idx: int):
         count = 0
         while True:
@@ -251,21 +313,31 @@ class MoveCopier:
             new_cancel = deepcopy(src_cancel)
 
             # Check if it is an input sequence or group cancel
-            # TODO
+            if self.checkCommand(new_cancel['command']):
+                src_cancel_idx += 1
+                continue
 
             # Update extradata
-            extradata_value = src_cancel['cancel_extradata'][new_cancel['extradata_idx']]
+            extradata_value = self.__srcMvst['cancel_extradata'][src_cancel['extradata_idx']]
             new_cancel['extradata_idx'] = findExtradataIndex(
                 extradata_value, self.__dstMvst)
 
             # Update move ID
-            self.updateMoveIDs(new_cancel)
+            self.updateMoveID(new_cancel)
 
             # Update requirement_idx
-            # TODO
+            # TODO: reqList to get aliased to T7 values
+            reqList = getReqList(self.__srcMvst, src_cancel['requirement_idx'])
+            new_req_idx = search(reqList, self.__dstMvst['requirements'])
+            if new_req_idx == -1:
+                new_req_idx = len(self.__dstMvst['requirements'])
+                for req in reqList:
+                    self.__dstMvst['requirements'].append(req)
 
+            # Update the new cancel into 'cancels' list
             self.__dstMvst['cancels'].append(new_cancel)
 
+            # Update iterator
             src_cancel_idx += 1
             count += 1
 
