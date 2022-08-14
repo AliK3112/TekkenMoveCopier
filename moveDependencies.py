@@ -2,7 +2,7 @@ import collections
 import json
 import sys
 
-keys = [
+reaction_keys = [
     "standing",
     "ch",
     "crouch",
@@ -64,6 +64,9 @@ class MoveDependencies:
             raise BaseException('targetMoveName Empty')
         if isSame(sourceMvst, dstMvst):
             raise BaseException('Source & Destination movesets are the same')
+        if getMoveID(dstMvst, targetMoveName) != -1:
+            raise BaseException(
+                'The move \"%s\" already exists within destination moveset' % targetMoveName)
 
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
@@ -71,6 +74,8 @@ class MoveDependencies:
         self.__srcMoveId = getMoveID(self.__srcMvst, self.__moveName)
         self.__dependency_name_id = {}  # KEY: moveName VALUE: moveID
         self.__dependent_id_name = {}  # KEY: moveID VALUE: moveName
+        self.__dependency_name_id[targetMoveName] = self.__srcMoveId
+        self.__dependent_id_name[self.__srcMoveId] = targetMoveName
         self.__checkDependencies(self.__srcMoveId)
 
     def __checkDependencies(self, moveID: int):
@@ -172,7 +177,7 @@ class MoveDependencies:
             reactionList = self.__srcMvst['reaction_list'][reactionListIdx]
 
             # Iterating reaction list
-            for key in keys:
+            for key in reaction_keys:
                 # Getting name of the move within source movelist
                 nextMoveName = getMoveName(self.__srcMvst, reactionList[key])
                 nextMoveId = getMoveID(self.__dstMvst, nextMoveName)

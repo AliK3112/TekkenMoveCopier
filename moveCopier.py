@@ -1,24 +1,8 @@
 from copy import deepcopy
 import sys
 import json
-from moveDependencies import MoveDependencies
-
-keys = [
-    "standing",
-    "ch",
-    "crouch",
-    "crouch_ch",
-    "left_side",
-    "left_side_crouch",
-    "right_side",
-    "right_side_crouch",
-    "back",
-    "back_crouch",
-    "block",
-    "crouch_block",
-    "wallslump",
-    "downed"
-]
+from Aliases import fillAliasesDictonnaries, getMoveExtrapropAlias, getRequirementAlias
+from moveDependencies import MoveDependencies, reaction_keys
 
 
 def loadJson(filepath):
@@ -28,6 +12,12 @@ def loadJson(filepath):
     except FileNotFoundError:
         data = None
     return data
+
+
+def saveJson(filename, movesetData):
+    with open(filename, "w") as f:
+        json.dump(movesetData, f, indent=4)
+    return
 
 
 def search(pat, txt):
@@ -110,15 +100,19 @@ def getInputSequence(moveset, idx: int) -> list:
 def getReqList(moveset, idx: int) -> list:
     list = []
     while True:
-        reqObj = moveset['requirements'][idx]
-        list.append(reqObj)
-        if (reqObj['req'] == 881):  # TODO: Replace 881 with game end req val
+        requirement = deepcopy(moveset['requirements'][idx])
+        req, param = getRequirementAlias(
+            moveset['version'], requirement['req'], requirement['param'])
+        requirement['req'] = req
+        requirement['param'] = param
+        list.append(requirement)
+        if (requirement['req'] == 881):  # TODO: Replace 881 with game end req val
             break
         idx += 1
     return list
 
 
-# Find idx of the cancel extradata. Take tag2 extradata value and find it's index in T7 moveset
+# Find idx of the cancel extradata. Take source extradata value and find it's index in destination moveset
 def findExtradataIndex(extradata_value: int, moveset: dict):
     for i, j in enumerate(moveset['cancel_extradata']):
         if j == extradata_value:
@@ -137,6 +131,9 @@ class MoveCopier:
             raise BaseException('Destination Moveset Empty')
         if isSame(sourceMvst, dstMvst):
             raise BaseException('Source & Destination movesets are the same')
+        if dstMvst['version'] != 'Tekken7':
+            raise BaseException(
+                'Destination Moveset is Not a Tekken 7 moveset. version =', dstMvst['version'])
 
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
@@ -144,6 +141,7 @@ class MoveCopier:
         self.__dependent_id_name = dependency_id_name
 
     def CopyAllDependentMoves(self):
+        fillAliasesDictonnaries(self.__srcMvst['version'])
         indexesOfAddedMoves = []
 
         # Iterate the dictionary
@@ -153,18 +151,17 @@ class MoveCopier:
 
             # Storing index of this newly created move
             indexesOfAddedMoves.append(new_move_id)
-            print('Move Added: %-20s. Index = %d' %
-                  (self.__dependent_id_name[id], indexesOfAddedMoves[-1]))
+            print('Move Added: %s. Index = %d' %
+                  (self.__dependent_id_name[src_move_id], indexesOfAddedMoves[-1]))
 
             # Creating extraprops list
             self.createExtramovePropertiesList(src_move_id, new_move_id)
 
-        # Update transition
+        # Creating secondary properties. (cancels, reactions)
         for i, src_move_id in enumerate(self.__dependent_id_name):
+            # Update transition
             self.updateTransition(src_move_id, indexesOfAddedMoves[i])
 
-        # Copying tag 2 cancels to put into T7
-        for i, src_move_id in enumerate(self.__dependent_id_name):
             # Get source move
             src_move = self.__srcMvst['moves'][src_move_id]
 
@@ -177,9 +174,11 @@ class MoveCopier:
                 print('move Name not equal\nSource: %s\n New: %s' %
                       (src_move['name'], new_move['name']))
                 break
+            else:
+                print('Creating cancel list of move', new_move['name'])
 
             # Get cancel index of src move
-            src_move_cancel_idx = new_move['cancel_idx']
+            src_move_cancel_idx = src_move['cancel_idx']
 
             # Set index to last cancel
             new_move_cancel_idx = len(self.__dstMvst['cancels'])
@@ -193,6 +192,10 @@ class MoveCopier:
             # Adjusting rest of the cancels
             for j in range(new_move_id+1, len(self.__dstMvst['moves'])):
                 self.__dstMvst['moves'][j]['cancel_idx'] += size_of_new_cancel_list
+
+            # Creating hit conditions & reaction lists
+            # new_move['hit_condition_idx'] = self.createHitCondition(
+            #     src_move['hit_condition_idx'])
 
         return
 
@@ -208,7 +211,7 @@ class MoveCopier:
     def softCopyMove(self, move_id: int):
         src_move = self.__srcMvst['moves'][move_id]
 
-        # Creating a deep copy of Tag 2 move
+        # Creating a deep copy of Source move
         new_move = deepcopy(src_move)
 
         # Assigning attributes to this new move
@@ -255,20 +258,33 @@ class MoveCopier:
         new_props_list = []
         for prop in src_props_list:
             id, type, value = prop['id'], prop['type'], prop['value']
-            # type, id, value = getMoveExtrapropAlias(type, id, value)
-            # if id == None:
-            #     break
+            type, id, value = getMoveExtrapropAlias(
+                self.__srcMvst['version'], type, id, value)
+            if id == None:
+                break
             new_props_list.append({'id': id, 'type': type, 'value': value})
 
         # Assigning index
-        new_index = len(self.__dstMvs['extra_move_properties'])
+        new_index = len(self.__dstMvst['extra_move_properties'])
         new_move['extra_properties_idx'] = new_index
         for i in new_props_list:
-            self.__dstMvs['extra_move_properties'].append(i)
+            self.__dstMvst['extra_move_properties'].append(i)
+        return new_index
 
     def createRequirementsList(self, reqList):
         idx = search(reqList, self.__dstMvst['requirements'])
-        return
+        if idx == -1:
+            idx = len(self.__dstMvst['requirements'])
+            for req in reqList:
+                self.__dstMvst['requirements'].append(req)
+        return idx
+
+    def createHitCondition(self, src_hit_idx: int) -> int:
+        if src_hit_idx == 0:
+            return 0
+        src_reaction_list = self.__srcMvst['hit_conditions'][src_hit_idx]
+        new_idx = len(self.__dstMvst['hit_conditions'])
+        return new_idx
 
     def updateMoveID(self, new_cancel):
         if (new_cancel['command'] == 0x800b):
@@ -326,13 +342,9 @@ class MoveCopier:
             self.updateMoveID(new_cancel)
 
             # Update requirement_idx
-            # TODO: reqList to get aliased to T7 values
             reqList = getReqList(self.__srcMvst, src_cancel['requirement_idx'])
-            new_req_idx = search(reqList, self.__dstMvst['requirements'])
-            if new_req_idx == -1:
-                new_req_idx = len(self.__dstMvst['requirements'])
-                for req in reqList:
-                    self.__dstMvst['requirements'].append(req)
+            new_cancel['requirement_idx'] = self.createRequirementsList(
+                reqList)
 
             # Update the new cancel into 'cancels' list
             self.__dstMvst['cancels'].append(new_cancel)
@@ -351,6 +363,13 @@ def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
         sourceMvst, destMvst, targetMoveName).getDependencies()
     copierObj = MoveCopier(sourceMvst, destMvst,
                            moveDependency_name_id, moveDependency_id_name)
+    copierObj.CopyAllDependentMoves()
+    # for _, id in enumerate(moveDependency_id_name):
+    #     print(id, moveDependency_id_name[id])
+    print("Done copying %s and all of it's dependencies" % targetMoveName)
+    path = r"C:\Users\alikh\Documents\TekkenMovesetExtractor\extracted_chars\t7_JIN_TEST"
+    # path = r"./"
+    saveJson('%s/%s.json' % (path, destMvst['character_name']), destMvst)
 
 
 def main():

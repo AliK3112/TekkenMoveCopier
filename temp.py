@@ -481,6 +481,6 @@ def copyCancels(t7_jin, tag2_jin, movename):
 
 
 if __name__ == "__main__":
-    main()
-    # t7_jin = LoadJson('./t7_JIN_10.json')
-    # print(getMoveID(t7_jin, 'nuke36_n'))
+    # main()
+    t7_jin = LoadJson('./t7_JIN.json')
+    print(getMoveID(t7_jin, 'JIN_up03'))
