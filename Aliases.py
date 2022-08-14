@@ -221,7 +221,8 @@ def fillDict(dictionnary):
             for i in range(1, key_diff + 1):
                 dictionnary[key + i] = {
                     't7_id': dictionnary[key]['t7_id'] + i,
-                    'desc': '%d:FILLED' % (key + i)
+                    # 'desc': '%d:FILLED' % (key + i)
+                    'desc': 'FILLED'
                 }
                 generatedKeys += 1
 
