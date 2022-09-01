@@ -5,7 +5,7 @@ from Aliases import fillAliasesDictonnaries, getMoveExtrapropAlias, getRequireme
 from moveDependencies import MoveDependencies, reaction_keys
 
 
-def loadJson(filepath):
+def loadJson(filepath: str):
     try:
         with open(filepath) as f:
             data = json.load(f)
@@ -20,10 +20,10 @@ def saveJson(filename, movesetData):
     return
 
 
-def search(pat, txt):
+def search(pat, txt, start=0):
     M = len(pat)
     N = len(txt)
-    for i in range(N - M + 1):
+    for i in range(start, N - M + 1):
         j = 0
         while(j < M):
             if (txt[i + j] != pat[j]):
@@ -46,13 +46,13 @@ def isSameInDifferentGame(moveset1, moveset2):
         and moveset1['creator_name'] == moveset2['creator_name']
 
 
-def getMoveName(moveset, move_id: int):
+def getMoveName(moveset, move_id: int) -> str:
     if move_id >= 0x8000:
         move_id = moveset['aliases'][move_id-0x8000]
     return moveset['moves'][move_id]['name']
 
 
-def getMoveID(moveset, movename: str, start=0):
+def getMoveID(moveset: dict, movename: str, start=0):
     n = len(moveset['moves'])
     start = 0 if (start >= n or start < 0) else start
     for i in range(start, n):
@@ -111,6 +111,36 @@ def getReqList(moveset, idx: int) -> list:
         idx += 1
     return list
 
+def getReactionList(moveset, idx: int) -> dict:
+    if idx >= len(moveset['reaction_list']):
+        return None
+
+    # Getting specific reaction list
+    reaction_list = deepcopy(moveset['reaction_list'][idx])
+
+    pushbacks = moveset['pushbacks']
+    pushback_extras = moveset['pushback_extras']
+
+    reaction_list['pushback_list'] = []
+
+    # Iterating through pushbacks of reaction lists and assigining them
+    for i, index in enumerate(reaction_list['pushback_indexes']):
+        pushback = deepcopy(pushbacks[index])
+
+        # Assigning 'pushbackextra_idx' value to it
+        extra_idx = pushback['pushbackextra_idx']
+        val3 = pushback['val3']
+        pushback['pushbackextra'] = pushback_extras[extra_idx: extra_idx+val3]
+
+        reaction_list['pushback_list'].append(pushback)
+
+    # Assigning move-names instead of indexes
+    for i in reaction_keys:
+        index = reaction_list[i]
+        reaction_list[i] = getMoveName(moveset, index)
+
+    return reaction_list
+
 
 # Find idx of the cancel extradata. Take source extradata value and find it's index in destination moveset
 def findExtradataIndex(extradata_value: int, moveset: dict):
@@ -139,6 +169,9 @@ class MoveCopier:
         self.__dstMvst = dstMvst
         self.__dependency_name_id = dependency_name_id
         self.__dependent_id_name = dependency_id_name
+
+    def __get881ReqIdx(self) -> int:
+        return self.__srcMvst['hit_conditions'][1]['requirement_idx']
 
     def CopyAllDependentMoves(self):
         fillAliasesDictonnaries(self.__srcMvst['version'])
@@ -288,18 +321,39 @@ class MoveCopier:
             hit_cond = deepcopy(self.__srcMvst['hit_conditions'][src_hit_idx])
             req_idx = hit_cond['requirement_idx']
             
-            # Get new reaction list idx
+            # Get new requirement list idx
             reqList = getReqList(self.__srcMvst, req_idx)
             hit_cond['requirement_idx'] = self.createRequirementsList(reqList)
 
+            # Get new reaction list idx
+            reactionList = getReactionList(self.__srcMvst, hit_cond['reaction_list_idx'])
+            hit_cond['reaction_list_idx'] = self.createReactionList(reactionList)
+            
             # Append new hit condition
             self.__dstMvst['hit_conditions'].append(hit_cond)
-
-            # Logic to build reaction list comes here
 
             # Loop break
             if req_idx == req881:
                 break
+
+            src_hit_idx += 1
+
+        return new_idx
+
+    def createReactionList(self, reactionlist: dict) -> int:
+        new_idx = len(self.__dstMvst['reaction_list'])
+        # Replace move names with move IDs
+        for key in reaction_keys:
+            reactionlist[key] = getMoveID(self.__dstMvst, reactionlist[key])
+
+        # Find pushback indexes in destination movelist
+        pushback_list = reactionlist['pushback_list']
+
+        for i, pushback in enumerate(pushback_list):
+            pushback_extra_idx = search(pushback['pushbackextra'], self.__dstMvst['pushback_extras'])
+        
+        # Appending new reaction-list into moveset
+        self.__dstMvst['reaction_list'].append(reactionlist)
         return new_idx
 
     def updateMoveID(self, new_cancel):
