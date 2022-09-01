@@ -176,7 +176,7 @@ def findSimilarReactionList(moveset, srcReactionList):
     return
 
 
-def getMoveName(moveset, move_idx):
+def getMoveName(moveset: dict, move_idx: int):
     if move_idx >= 0x8000:
         move_idx = moveset['aliases'][move_idx-0x8000]
     return moveset['moves'][move_idx]['name']
