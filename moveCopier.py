@@ -282,8 +282,24 @@ class MoveCopier:
     def createHitCondition(self, src_hit_idx: int) -> int:
         if src_hit_idx == 0:
             return 0
-        src_reaction_list = self.__srcMvst['hit_conditions'][src_hit_idx]
+        req881 = self.__get881ReqIdx()
         new_idx = len(self.__dstMvst['hit_conditions'])
+        while True:
+            hit_cond = deepcopy(self.__srcMvst['hit_conditions'][src_hit_idx])
+            req_idx = hit_cond['requirement_idx']
+            
+            # Get new reaction list idx
+            reqList = getReqList(self.__srcMvst, req_idx)
+            hit_cond['requirement_idx'] = self.createRequirementsList(reqList)
+
+            # Append new hit condition
+            self.__dstMvst['hit_conditions'].append(hit_cond)
+
+            # Logic to build reaction list comes here
+
+            # Loop break
+            if req_idx == req881:
+                break
         return new_idx
 
     def updateMoveID(self, new_cancel):
