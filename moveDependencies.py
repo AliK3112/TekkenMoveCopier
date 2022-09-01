@@ -67,21 +67,29 @@ class MoveDependencies:
         if getMoveID(dstMvst, targetMoveName) != -1:
             raise BaseException(
                 'The move \"%s\" already exists within destination moveset' % targetMoveName)
-
+        
+        self.__stack = []
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
         self.__moveName = targetMoveName
         self.__srcMoveId = getMoveID(self.__srcMvst, self.__moveName)
+        
         self.__dependency_name_id = {}  # KEY: moveName VALUE: moveID
         self.__dependent_id_name = {}  # KEY: moveID VALUE: moveName
+
         self.__dependency_name_id[targetMoveName] = self.__srcMoveId
         self.__dependent_id_name[self.__srcMoveId] = targetMoveName
-        self.__checkDependencies(self.__srcMoveId)
+        
+        self.__stack.append(self.__srcMoveId)
+        self.__checkDependencies()
 
     def __checkDependencies(self, moveID: int):
-        self.__getTransitionDependencies(moveID)
-        self.__getCancelDependencies(moveID)
-        self.__getReactionListDependencies(moveID)
+        moveID = int(-1)
+        while self.__stack:
+            moveID = self.__stack.pop(0)
+            self.__getTransitionDependencies(moveID)
+            self.__getCancelDependencies(moveID)
+            self.__getReactionListDependencies(moveID)
 
     def getDependencies(self):
         # self.__dependency_name_id = collections.OrderedDict(
@@ -115,7 +123,8 @@ class MoveDependencies:
                 self.__dependent_id_name[transition] = nextMoveName
 
                 # recursive re-call for the move we just found
-                self.__checkDependencies(nextMoveId)
+                # self.__checkDependencies(nextMoveId)
+                self.__stack.append(nextMoveId)
         return
 
     def __getCancelDependencies(self, moveID: int):
@@ -151,7 +160,8 @@ class MoveDependencies:
                     self.__dependent_id_name[nextMoveId] = nextMoveName
 
                     # recursive re-call for the move we just found
-                    self.__checkDependencies(nextMoveId)
+                    # self.__checkDependencies(nextMoveId)
+                    self.__stack.append(nextMoveId)
 
             if cancel['command'] == 0x8000:
                 break
@@ -193,10 +203,29 @@ class MoveDependencies:
                         self.__dependency_name_id[nextMoveName] = reactionList[key]
 
                         # recursive re-call for the move we just found
-                        self.__checkDependencies(nextMoveId)
+                        # self.__checkDependencies(nextMoveId)
+                        
+                        # add into stack
+                        self.__stack.append(nextMoveId)
 
             if reqIdx == endListReq:
                 break
 
             hit_cond_idx += 1
         return
+
+def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
+    moveDependency_name_id, moveDependency_id_name = MoveDependencies(
+        sourceMvst, destMvst, targetMoveName).checkDependenciesIterative()
+    
+    for _, id in enumerate(moveDependency_id_name):
+        print(id, moveDependency_id_name[id])
+
+def test():
+    srcMvst = loadJson('./tag2_JIN.json')
+    dstMvst = loadJson('./t7_JIN.json')
+    movName = 'JIN_up03'
+    copyMovesAcrossMovesets(srcMvst, dstMvst, movName)
+
+if __name__ == '__main__':
+    test()
