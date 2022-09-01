@@ -177,7 +177,7 @@ class MoveDependencies:
         endListReq = self.__get881ReqIdx()
 
         while True:
-            # Getting reaction of the hit condition
+            # Getting requirement of the hit condition
             reqIdx = self.__srcMvst['hit_conditions'][hit_cond_idx]['requirement_idx']
 
             # Getting the reaction list index
