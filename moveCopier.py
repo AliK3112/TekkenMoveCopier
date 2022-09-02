@@ -383,9 +383,9 @@ def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
     # for _, id in enumerate(moveDependency_id_name):
     #     print(id, moveDependency_id_name[id])
     print("Done copying %s and all of it's dependencies" % targetMoveName)
-    path = r"C:\Users\alikh\Documents\TekkenMovesetExtractor\extracted_chars\t7_JIN_TEST"
-    # path = r"./"
-    saveJson('%s/%s.json' % (path, destMvst['character_name']), destMvst)
+    # path = r"C:\Users\alikh\Documents\TekkenMovesetExtractor\extracted_chars\t7_JIN_TEST"
+    path = r"./"
+    saveJson('%s/%s_new.json' % (path, destMvst['character_name']), destMvst)
 
 
 def main():
