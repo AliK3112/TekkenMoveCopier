@@ -190,15 +190,10 @@ def reactionlistFn(dstMvst):
 		new_idx = search([pushback], pushbacks)
 		print(new_idx)
 	print('#######################')
-	# print(pushbacks[100])
-
 	return
 
-def main():
-	dstMvst = loadJson('t7_JIN.json')
-	# reactionlistFn(dstMvst)
-	
-	# Replace move names with move IDs
+def test2(dstMvst):
+    # Replace move names with move IDs
 	for key in reaction_keys:
 		moveID = getMoveID(dstMvst, reactionlist[key])
 		reactionlist[key] = moveID if moveID != -1 else reactionlist[key]
@@ -235,5 +230,29 @@ def main():
 	prettyPrint(pushback_aliases)
 	return
 
+def main():
+	dstMvst = loadJson('t7_JIN.json')
+	test2(dstMvst)
+
+
+def test3():
+	with open('copy_aliases.txt', 'r') as f:
+		# lines = f.read()
+		lines = f.read().replace('\n', '')
+		# print(lines)
+		group_cancel_aliases = json.loads(lines)
+		group_cancel_aliases = group_cancel_aliases['group_cancel_aliases']
+		for item in group_cancel_aliases:
+			if (item['alias'] == {}): continue
+			print("Move ID: %-4d -> %-4d" % (item['move_id'], item['alias']['move_id']), end=' ')
+			print("| Starting Frame: %-4d -> %-4d" % (item['starting_frame'], item['alias']['starting_frame']))
+
+def test4():
+	dstMvst = loadJson('t7_JIN.json')
+	end = [{"req": 881, "param": 0}, {"req": 881, "param": 0}]
+	idx = search(end, dstMvst['requirements'])
+	print(idx)
+
 if __name__ == '__main__':
-	main()
+	# main()
+	test4()
