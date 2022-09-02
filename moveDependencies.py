@@ -47,7 +47,7 @@ def getMoveName(moveset, move_id: int):
     return moveset['moves'][move_id]['name']
 
 
-def getMoveID(moveset, movename):
+def getMoveID(moveset, movename: str):
     for i, move in enumerate(moveset['moves']):
         if move['name'] == movename:
             return i
@@ -55,7 +55,7 @@ def getMoveID(moveset, movename):
 
 
 class MoveDependencies:
-    def __init__(self, sourceMvst, dstMvst, targetMoveName):
+    def __init__(self, sourceMvst: dict, dstMvst: dict, targetMoveName: str):
         if sourceMvst == None:
             raise BaseException('Source Moveset Empty')
         if dstMvst == None:

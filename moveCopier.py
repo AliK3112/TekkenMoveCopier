@@ -217,7 +217,7 @@ class MoveCopier:
         # Iterate the dictionary
         for _, src_move_id in enumerate(self.__dependent_id_name):
             # Create the move and get the ID
-            new_move_id = self.softCopyMove(src_move_id)
+            new_move_id = self.__softCopyMove(src_move_id)
 
             # Storing index of this newly created move
             indexesOfAddedMoves.append(new_move_id)
@@ -228,11 +228,11 @@ class MoveCopier:
         # Creating secondary properties. (cancels, reactions)
         for i, src_move_id in enumerate(self.__dependent_id_name):
             # Update transition
-            self.updateTransition(src_move_id, indexesOfAddedMoves[i])
+            self.__updateTransition(src_move_id, indexesOfAddedMoves[i])
 
             # Creating extraprops list
             print('Creating Extraprop list at idx: %d for move %d - %s' % (len(self.__dstMvst['extra_move_properties']), indexesOfAddedMoves[i], self.__dependent_id_name[src_move_id]))
-            self.createExtramovePropertiesList(src_move_id, new_move_id)
+            self.__createExtramovePropertiesList(src_move_id, new_move_id)
 
             # Get source move
             src_move = self.__srcMvst['moves'][src_move_id]
@@ -253,7 +253,7 @@ class MoveCopier:
 
             # Copy Cancels
             print('Creating cancel list at idx: %d for move %d - %s' % (new_move['cancel_idx'], new_move_id, new_move['name']))
-            size_of_new_cancel_list = self.copyCancelList(src_move_cancel_idx)
+            size_of_new_cancel_list = self.__copyCancelList(src_move_cancel_idx)
 
             # Assigning index to move whose cancel list was just created
             self.__dstMvst['moves'][new_move_id]['cancel_idx'] = new_move_cancel_idx
@@ -264,7 +264,7 @@ class MoveCopier:
 
             # Creating hit conditions & reaction lists
             print('Creating Hit Condition list at idx: %d for move %d - %s' % (len(self.__dstMvst['hit_conditions']), new_move_id, new_move['name']))
-            new_move['hit_condition_idx'] = self.createHitCondition(src_move['hit_condition_idx'])
+            new_move['hit_condition_idx'] = self.__createHitCondition(src_move['hit_condition_idx'])
             print('\n')
         
         after = {}
@@ -276,14 +276,14 @@ class MoveCopier:
         return
 
     # Updates the transition attribute, this value may refer to a move that doesn't exist yet, so better to call this function after importing moves
-    def updateTransition(self, src_move_id: int, new_move_id: int):
+    def __updateTransition(self, src_move_id: int, new_move_id: int):
         new_move = self.__dstMvst['moves'][new_move_id]
         if new_move['transition'] >= 0x8000:
             return
         new_move['transition'] = getMoveID(self.__dstMvst, getMoveName(self.__srcMvst, new_move['transition']))
         return
 
-    def softCopyMove(self, move_id: int):
+    def __softCopyMove(self, move_id: int):
         src_move = self.__srcMvst['moves'][move_id]
 
         # Creating a deep copy of Source move
@@ -306,11 +306,11 @@ class MoveCopier:
 
         # Copying voice-clip
         voiceclip_idx = new_move['voiceclip_idx']
-        new_move['voiceclip_idx'] = self.createNewVoiceclipList(voiceclip_idx)
+        new_move['voiceclip_idx'] = self.__createNewVoiceclipList(voiceclip_idx)
 
         return len(self.__dstMvst['moves'])-1
 
-    def createNewVoiceclipList(self, voiceclip_idx):
+    def __createNewVoiceclipList(self, voiceclip_idx):
         if voiceclip_idx == -1:
             return -1
         new_list = getVoiceclipList(self.__srcMvst, voiceclip_idx)
@@ -319,7 +319,7 @@ class MoveCopier:
             self.__dstMvst['voiceclips'].append(value)
         return voiceclip_idx
 
-    def createExtramovePropertiesList(self, src_move_id, new_move_id):
+    def __createExtramovePropertiesList(self, src_move_id, new_move_id):
         # Get moves
         new_move = self.__dstMvst['moves'][new_move_id]
         src_move = self.__srcMvst['moves'][src_move_id]
@@ -347,7 +347,7 @@ class MoveCopier:
 
         return new_index
 
-    def createRequirementsList(self, reqList):
+    def __createRequirementsList(self, reqList):
         idx = search(reqList, self.__dstMvst['requirements'])
         if idx == -1:
             idx = len(self.__dstMvst['requirements'])
@@ -355,7 +355,7 @@ class MoveCopier:
                 self.__dstMvst['requirements'].append(req)
         return idx
 
-    def createHitCondition(self, src_hit_idx: int) -> int:
+    def __createHitCondition(self, src_hit_idx: int) -> int:
         if src_hit_idx == 0:
             return 0
         req881 = self.__get881ReqIdx()
@@ -366,13 +366,13 @@ class MoveCopier:
             if (reqList == [{'req': 881, 'param': 0}]):
                 req_idx = req881
             else:
-                req_idx = self.createRequirementsList(reqList)
+                req_idx = self.__createRequirementsList(reqList)
             hit_cond['requirement_idx'] = req_idx
             print('[REACTION] Requirement list created at idx: %d' % req_idx)
 
             # Get new reaction list idx
             reactionList = getReactionList(self.__srcMvst, hit_cond['reaction_list_idx'])
-            hit_cond['reaction_list_idx'] = self.createReactionList(reactionList)
+            hit_cond['reaction_list_idx'] = self.__createReactionList(reactionList)
             print('Reaction list created at idx: %d' % hit_cond['reaction_list_idx'])
             
             # Append new hit condition
@@ -386,7 +386,7 @@ class MoveCopier:
 
         return new_idx
 
-    def createReactionList(self, reactionlist: dict) -> int:
+    def __createReactionList(self, reactionlist: dict) -> int:
         # Replace move names with move IDs
         for key in reaction_keys:
             moveID = getMoveID(self.__dstMvst, reactionlist[key])
@@ -401,7 +401,7 @@ class MoveCopier:
         del reactionlist['pushback_list']
         for i, pushback_data in enumerate(pushback_list):
             pushback_idx = reactionlist['pushback_indexes'][i] # Old pushback_index
-            pushback_idx, flag = self.getPushbackIdx(pushback_data, pushback_idx, i)
+            pushback_idx, flag = self.__getPushbackIdx(pushback_data, pushback_idx, i)
             if not flag:
                 searchFlag = False
             reactionlist['pushback_indexes'][i] = pushback_idx # Assigning new pushback index
@@ -418,7 +418,7 @@ class MoveCopier:
 
     # Returns also a Flag to decide whether we should search for this reaction
     # list in destination or not, once correct pushbacks have been applied
-    def getPushbackIdx(self, pushback_dict: dict, pushback_idx: int, idx: int):
+    def __getPushbackIdx(self, pushback_dict: dict, pushback_idx: int, idx: int):
         # Getting all pushback indexes
         pushback_extra = pushback_dict['pushbackextra']
         del pushback_dict['pushbackextra']
@@ -451,7 +451,7 @@ class MoveCopier:
         self.__dstMvst['pushbacks'] += pushback_extra
         return new_idx, False
 
-    def updateMoveID(self, new_cancel):
+    def __updateMoveID(self, new_cancel):
         if (new_cancel['command'] == 0x800b):
             return
 
@@ -462,7 +462,7 @@ class MoveCopier:
             self.__dstMvst, getMoveName(self.__srcMvst, new_cancel['move_id']))
         return
 
-    def checkCommand(self, cancel):
+    def __checkCommand(self, cancel):
         command = cancel['command']
         # Group Cancel
         if command == 0x800b:
@@ -478,10 +478,10 @@ class MoveCopier:
         # Input sequence
         if 0x800d <= command <= len(self.__srcMvst['input_sequences']):
             inputSeq = getInputSequence(self.__srcMvst, command - 0x800d)
-            self.createInputSequence(inputSeq)
+            self.__createInputSequence(inputSeq)
         return False
 
-    def createInputSequence(self, inputSeq):
+    def __createInputSequence(self, inputSeq):
         inputExtras = self.__dstMvst['input_extradata']
         last = inputExtras.pop()
         idx = len(inputExtras)
@@ -492,7 +492,7 @@ class MoveCopier:
         self.__dstMvst['input_sequences'].append(inputSeq)
         return
 
-    def copyCancelList(self, src_cancel_idx: int):
+    def __copyCancelList(self, src_cancel_idx: int):
         count = 0
         while True:
             try:
@@ -504,7 +504,7 @@ class MoveCopier:
             new_cancel = deepcopy(src_cancel)
 
             # Check if it is an input sequence or group cancel
-            if self.checkCommand(new_cancel):
+            if self.__checkCommand(new_cancel):
                 src_cancel_idx += 1
                 continue
 
@@ -513,11 +513,11 @@ class MoveCopier:
             new_cancel['extradata_idx'] = findExtradataIndex(extradata_value, self.__dstMvst)
 
             # Update move ID
-            self.updateMoveID(new_cancel)
+            self.__updateMoveID(new_cancel)
 
             # Update requirement_idx
             reqList = getReqList(self.__srcMvst, src_cancel['requirement_idx'])
-            new_cancel['requirement_idx'] = self.createRequirementsList(reqList)
+            new_cancel['requirement_idx'] = self.__createRequirementsList(reqList)
             print('Requirement list created at idx: %d' % new_cancel['requirement_idx'])
 
             # Update the new cancel into 'cancels' list
@@ -532,7 +532,7 @@ class MoveCopier:
         return count
 
 
-def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
+def copyMovesAcrossMovesets(sourceMvst: dict, destMvst: dict, targetMoveName: str):
     moveDependency_name_id, moveDependency_id_name = MoveDependencies(
         sourceMvst, destMvst, targetMoveName).getDependencies()
     copierObj = MoveCopier(sourceMvst, destMvst,

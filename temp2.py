@@ -236,16 +236,20 @@ def main():
 
 
 def test3():
-	with open('copy_aliases.txt', 'r') as f:
-		# lines = f.read()
-		lines = f.read().replace('\n', '')
-		# print(lines)
-		group_cancel_aliases = json.loads(lines)
-		group_cancel_aliases = group_cancel_aliases['group_cancel_aliases']
-		for item in group_cancel_aliases:
-			if (item['alias'] == {}): continue
-			print("Move ID: %-4d -> %-4d" % (item['move_id'], item['alias']['move_id']), end=' ')
-			print("| Starting Frame: %-4d -> %-4d" % (item['starting_frame'], item['alias']['starting_frame']))
+	try:
+		with open('copy_aliases1.txt', 'r') as f:
+			# lines = f.read()
+			lines = f.read().replace('\n', '')
+			# print(lines)
+			group_cancel_aliases = json.loads(lines)
+			group_cancel_aliases = group_cancel_aliases['group_cancel_aliases']
+			for item in group_cancel_aliases:
+				if (item['alias'] == {}): continue
+				print("Move ID: %-4d -> %-4d" % (item['move_id'], item['alias']['move_id']), end=' ')
+				print("| Starting Frame: %-4d -> %-4d" % (item['starting_frame'], item['alias']['starting_frame']))
+	except:
+		print('File not found')
+		pass
 
 def test4():
 	dstMvst = loadJson('t7_JIN.json')
@@ -255,4 +259,4 @@ def test4():
 
 if __name__ == '__main__':
 	# main()
-	test4()
+	test3()
