@@ -34,6 +34,7 @@ def search(pat, txt, start=0):
     return -1
 
 
+
 def isSame(moveset1, moveset2):
     return moveset1['version'] == moveset2['version'] \
         and moveset1['tekken_character_name'] == moveset2['tekken_character_name'] \
@@ -320,18 +321,39 @@ class MoveCopier:
         while True:
             hit_cond = deepcopy(self.__srcMvst['hit_conditions'][src_hit_idx])
             req_idx = hit_cond['requirement_idx']
-            # Get new reaction list idx
+
             reqList = getReqList(self.__srcMvst, req_idx)
             hit_cond['requirement_idx'] = self.createRequirementsList(reqList)
 
+            # Get new reaction list idx
+            reactionList = getReactionList(self.__srcMvst, hit_cond['reaction_list_idx'])
+            hit_cond['reaction_list_idx'] = self.createReactionList(reactionList)
+            
             # Append new hit condition
             self.__dstMvst['hit_conditions'].append(hit_cond)
-
-            # Logic to build reaction list comes here
 
             # Loop break
             if req_idx == req881:
                 break
+
+            src_hit_idx += 1
+
+        return new_idx
+
+    def createReactionList(self, reactionlist: dict) -> int:
+        new_idx = len(self.__dstMvst['reaction_list'])
+        # Replace move names with move IDs
+        for key in reaction_keys:
+            reactionlist[key] = getMoveID(self.__dstMvst, reactionlist[key])
+
+        # Find pushback indexes in destination movelist
+        pushback_list = reactionlist['pushback_list']
+
+        for i, pushback in enumerate(pushback_list):
+            pushback_extra_idx = search(pushback['pushbackextra'], self.__dstMvst['pushback_extras'])
+        
+        # Appending new reaction-list into moveset
+        self.__dstMvst['reaction_list'].append(reactionlist)
         return new_idx
 
     def updateMoveID(self, new_cancel):

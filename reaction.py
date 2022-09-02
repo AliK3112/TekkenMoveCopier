@@ -102,6 +102,8 @@ def getReactionListAllData(moveset, idx: int):
     pushbacks = moveset['pushbacks']
     pushback_extras = moveset['pushback_extras']
 
+    reaction_list['pushback_list'] = []
+
     # Iterating through pushbacks of reaction lists and assigining them
     for i, index in enumerate(reaction_list['pushback_indexes']):
         pushback = deepcopy(pushbacks[index])
@@ -110,13 +112,13 @@ def getReactionListAllData(moveset, idx: int):
         extra_idx = pushback['pushbackextra_idx']
         val3 = pushback['val3']
         pushback['pushbackextra'] = pushback_extras[extra_idx: extra_idx+val3]
-        del pushback['pushbackextra_idx']
+        # del pushback['pushbackextra_idx']
 
-        reaction_list['pushback_indexes'][i] = pushback
+        reaction_list['pushback_list'].append(pushback)
 
     # Renaming 'pushback_indexes' to 'pushbacks'
-    reaction_list['pushbacks'] = reaction_list['pushback_indexes']
-    del reaction_list['pushback_indexes']
+    # reaction_list['pushbacks'] = reaction_list['pushback_indexes']
+    # del reaction_list['pushback_indexes']
 
     # Assigning move-names instead of indexes
     for i in keys:
@@ -242,8 +244,10 @@ def main():
     if tag2_moveset == None:
         return
     tag2_list = getReactionListAllData(tag2_moveset, 90)
-    prettyPrint(tag2_list)
-    findSimilarReactionList(t7_moveset, tag2_list)
+    # prettyPrint(tag2_list)
+    print(tag2_list)
+    SaveJson('temp_new.json', tag2_list)
+    # findSimilarReactionList(t7_moveset, tag2_list)
 
     # checkReactionlists = [116, 9, 107, 212, 117, 213]
     # for i in checkReactionlists:
