@@ -566,8 +566,8 @@ def main():
         print('Target move not passed')
         return
 
-    srcMvst = sys.argv[1]
-    dstMvst = sys.argv[2]
+    srcMvst = loadJson(sys.argv[1])
+    dstMvst = loadJson(sys.argv[2])
     movName = sys.argv[3]
 
     copyMovesAcrossMovesets(srcMvst, dstMvst, movName)
