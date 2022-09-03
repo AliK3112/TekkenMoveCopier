@@ -47,7 +47,7 @@ def getMoveName(moveset, move_id: int):
     return moveset['moves'][move_id]['name']
 
 
-def getMoveID(moveset, movename):
+def getMoveID(moveset, movename: str):
     for i, move in enumerate(moveset['moves']):
         if move['name'] == movename:
             return i
@@ -55,7 +55,7 @@ def getMoveID(moveset, movename):
 
 
 class MoveDependencies:
-    def __init__(self, sourceMvst, dstMvst, targetMoveName):
+    def __init__(self, sourceMvst: dict, dstMvst: dict, targetMoveName: str):
         if sourceMvst == None:
             raise BaseException('Source Moveset Empty')
         if dstMvst == None:
@@ -68,7 +68,6 @@ class MoveDependencies:
             raise BaseException(
                 'The move \"%s\" already exists within destination moveset' % targetMoveName)
         
-        self.__stack = []
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
         self.__moveName = targetMoveName
@@ -79,24 +78,22 @@ class MoveDependencies:
 
         self.__dependency_name_id[targetMoveName] = self.__srcMoveId
         self.__dependent_id_name[self.__srcMoveId] = targetMoveName
-        
-        self.__stack.append(self.__srcMoveId)
-        self.__checkDependencies()
 
-    def __checkDependencies(self, moveID: int):
+    def __checkDependencies(self):
         moveID = int(-1)
-        while self.__stack:
-            moveID = self.__stack.pop(0)
-            self.__getTransitionDependencies(moveID)
-            self.__getCancelDependencies(moveID)
-            self.__getReactionListDependencies(moveID)
+        stack = [self.__srcMoveId]
+        while stack:
+            moveID = stack.pop(0)
+            self.__getTransitionDependencies(moveID, stack)
+            self.__getCancelDependencies(moveID, stack)
+            self.__getReactionListDependencies(moveID, stack)
 
     def getDependencies(self):
         # self.__dependency_name_id = collections.OrderedDict(
         #     sorted(self.__dependency_name_id.items()))
         # self.__dependent_id_name = collections.OrderedDict(
         #     sorted(self.__dependent_id_name.items()))
-
+        self.__checkDependencies()
         return self.__dependency_name_id, self.__dependent_id_name
 
     def getMoveName(self):
@@ -107,8 +104,10 @@ class MoveDependencies:
 
     def __get881ReqIdx(self) -> int:
         return self.__srcMvst['hit_conditions'][1]['requirement_idx']
+        # end = [{"req": 881, "param": 0}, {"req": 881, "param": 0}]
+        # return search(end, self.__srcMvst['requirements'])
 
-    def __getTransitionDependencies(self, moveID: int):
+    def __getTransitionDependencies(self, moveID: int, stack: list):
         transition = self.__srcMvst['moves'][moveID]['transition']
         if transition >= 0x8000:
             return
@@ -124,10 +123,10 @@ class MoveDependencies:
 
                 # recursive re-call for the move we just found
                 # self.__checkDependencies(nextMoveId)
-                self.__stack.append(nextMoveId)
+                stack.append(nextMoveId)
         return
 
-    def __getCancelDependencies(self, moveID: int):
+    def __getCancelDependencies(self, moveID: int, stack: list):
         cancel_idx = self.__srcMvst['moves'][moveID]['cancel_idx']
         while True:
             # Storing cancel
@@ -161,7 +160,7 @@ class MoveDependencies:
 
                     # recursive re-call for the move we just found
                     # self.__checkDependencies(nextMoveId)
-                    self.__stack.append(nextMoveId)
+                    stack.append(nextMoveId)
 
             if cancel['command'] == 0x8000:
                 break
@@ -169,7 +168,7 @@ class MoveDependencies:
             cancel_idx += 1
         return
 
-    def __getReactionListDependencies(self, moveID: int):
+    def __getReactionListDependencies(self, moveID: int, stack: list):
         hit_cond_idx = self.__srcMvst['moves'][moveID]['hit_condition_idx']
         if hit_cond_idx == 0:
             return
@@ -197,7 +196,7 @@ class MoveDependencies:
                     # Storing ID of the reaction list key into 'nextMoveId'
                     nextMoveId = reactionList[key]
                     # if not, add it's name within dependencies
-                    if nextMoveId not in self.__dependency_name_id:
+                    if nextMoveName not in self.__dependency_name_id:
                         self.__dependent_id_name[reactionList[key]
                                                  ] = nextMoveName
                         self.__dependency_name_id[nextMoveName] = reactionList[key]
@@ -206,7 +205,7 @@ class MoveDependencies:
                         # self.__checkDependencies(nextMoveId)
                         
                         # add into stack
-                        self.__stack.append(nextMoveId)
+                        stack.append(nextMoveId)
 
             if reqIdx == endListReq:
                 break
@@ -216,7 +215,7 @@ class MoveDependencies:
 
 def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
     moveDependency_name_id, moveDependency_id_name = MoveDependencies(
-        sourceMvst, destMvst, targetMoveName).checkDependenciesIterative()
+        sourceMvst, destMvst, targetMoveName).getDependencies()
     
     for _, id in enumerate(moveDependency_id_name):
         print(id, moveDependency_id_name[id])
