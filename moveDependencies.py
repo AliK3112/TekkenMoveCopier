@@ -67,12 +67,12 @@ class MoveDependencies:
         if getMoveID(dstMvst, targetMoveName) != -1:
             raise BaseException(
                 'The move \"%s\" already exists within destination moveset' % targetMoveName)
-        
+
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
         self.__moveName = targetMoveName
         self.__srcMoveId = getMoveID(self.__srcMvst, self.__moveName)
-        
+
         self.__dependency_name_id = {}  # KEY: moveName VALUE: moveID
         self.__dependent_id_name = {}  # KEY: moveID VALUE: moveName
 
@@ -84,6 +84,11 @@ class MoveDependencies:
         stack = [self.__srcMoveId]
         while stack:
             moveID = stack.pop(0)
+            if (moveID == 1631):
+                name = self.__dependent_id_name[moveID]
+                del self.__dependent_id_name[moveID]
+                del self.__dependency_name_id[name]
+                continue
             self.__getTransitionDependencies(moveID, stack)
             self.__getCancelDependencies(moveID, stack)
             self.__getReactionListDependencies(moveID, stack)
@@ -203,7 +208,7 @@ class MoveDependencies:
 
                         # recursive re-call for the move we just found
                         # self.__checkDependencies(nextMoveId)
-                        
+
                         # add into stack
                         stack.append(nextMoveId)
 
@@ -213,18 +218,58 @@ class MoveDependencies:
             hit_cond_idx += 1
         return
 
-def copyMovesAcrossMovesets(sourceMvst, destMvst, targetMoveName):
+
+def printDependencies(sourceMvst, destMvst, targetMoveName):
     moveDependency_name_id, moveDependency_id_name = MoveDependencies(
         sourceMvst, destMvst, targetMoveName).getDependencies()
-    
+
     for _, id in enumerate(moveDependency_id_name):
         print(id, moveDependency_id_name[id])
 
+    print('Moves:', len(moveDependency_id_name))
+
+
+def main():
+    if len(sys.argv) < 4:
+        print('Parameters:')
+        print('1 = Source Moveset')
+        print('2 = Desination Moveset')
+        print('3 = Name of Move to Import')
+        return
+
+    if sys.argv[1] == None:
+        print('Source moveset not passed')
+        return
+
+    if sys.argv[2] == None:
+        print('Destination moveset not passed')
+        return
+
+    if sys.argv[3] == None:
+        print('Target move not passed')
+        return
+
+    srcMvst = loadJson(sys.argv[1])
+    if srcMvst == None:
+        print('Error reading Source moveset')
+        return
+
+    dstMvst = loadJson(sys.argv[2])
+    if dstMvst == None:
+        print('Error reading Destination moveset')
+        return
+
+    movName = sys.argv[3]
+
+    printDependencies(srcMvst, dstMvst, movName)
+
+
 def test():
-    srcMvst = loadJson('./tag2_JIN.json')
+    srcMvst = loadJson('./t7_DEVIL_JIN.json')
     dstMvst = loadJson('./t7_JIN.json')
-    movName = 'JIN_up03'
-    copyMovesAcrossMovesets(srcMvst, dstMvst, movName)
+    movName = 'Dj_lusako'
+    printDependencies(srcMvst, dstMvst, movName)
+
 
 if __name__ == '__main__':
-    test()
+    main()

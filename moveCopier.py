@@ -33,12 +33,25 @@ def search(pat, txt, start=0):
             return i
     return -1
 
+
 def subfinder(mylist, pattern):
     matches = []
     for i in range(len(mylist)):
         if mylist[i] == pattern[0] and mylist[i:i+len(pattern)] == pattern:
             matches.append(i)
     return matches
+
+
+def reverseBitOrder(number):
+    res = 0
+    for i in range(7):  # skip last bit
+        bitVal = (number & (1 << i)) != 0
+        res |= (bitVal << (7 - i))
+    return res
+
+
+def convertU15(number):
+    return (number >> 7) | ((reverseBitOrder(number)) << 24)
 
 
 def isSame(moveset1, moveset2):
@@ -92,7 +105,8 @@ def isLast(prop):
 
 def getExtrapropsList(moveset, idx: int) -> list:
     if idx >= len(moveset['extra_move_properties']):
-        raise BaseException('Invalid extra move properties index passed: %d' % idx)
+        raise BaseException(
+            'Invalid extra move properties index passed: %d' % idx)
 
     list = []
     while True:
@@ -123,7 +137,8 @@ def getReqList(moveset, idx: int) -> list:
     list = []
     while True:
         requirement = deepcopy(moveset['requirements'][idx])
-        req, param = getRequirementAlias(moveset['version'], requirement['req'], requirement['param'])
+        req, param = getRequirementAlias(
+            moveset['version'], requirement['req'], requirement['param'])
         requirement['req'] = req
         requirement['param'] = param
         list.append(requirement)
@@ -131,6 +146,7 @@ def getReqList(moveset, idx: int) -> list:
             break
         idx += 1
     return list
+
 
 def getReactionList(moveset, idx: int) -> dict:
     if idx >= len(moveset['reaction_list']):
@@ -190,13 +206,14 @@ class MoveCopier:
         self.pushback_aliases = {}
         self.group_cancel_aliases = {}
 
-        with open('copy_aliases.txt', 'r') as f:
-            try:
+        try:
+            with open('copy_aliases1.txt', 'r') as f:
                 lines = f.read().replace('\n', '')
                 obj = json.loads(lines)
                 self.group_cancel_aliases = obj['group_cancel_aliases']
-            except:
-                self.group_cancel_aliases = {}
+        except:
+            print('ERROR WHILE READING FILE')
+            self.group_cancel_aliases = {}
 
     def __get881ReqIdx(self) -> int:
         end = [{"req": 881, "param": 0}, {"req": 881, "param": 0}]
@@ -204,9 +221,9 @@ class MoveCopier:
         # return self.__srcMvst['hit_conditions'][1]['requirement_idx']
 
     def CopyAllDependentMoves(self):
-        keys = ['requirements', 'extra_move_properties', 'voiceclips', 'hit_conditions', 
-        'pushbacks', 'pushback_extras', 'reaction_list', 'cancels', 'moves', 'input_sequences',
-        'input_extradata', 'cancel_extradata']
+        keys = ['requirements', 'extra_move_properties', 'voiceclips', 'hit_conditions',
+                'pushbacks', 'pushback_extras', 'reaction_list', 'cancels', 'moves', 'input_sequences',
+                'input_extradata', 'cancel_extradata']
         before = {}
         for i in keys:
             before[i] = len(self.__dstMvst[i])
@@ -221,7 +238,8 @@ class MoveCopier:
 
             # Storing index of this newly created move
             indexesOfAddedMoves.append(new_move_id)
-            print('Move Added: %s. Index = %d' % (self.__dependent_id_name[src_move_id], indexesOfAddedMoves[-1]))
+            print('Move Added: %s. Index = %d' % (
+                self.__dependent_id_name[src_move_id], indexesOfAddedMoves[-1]))
 
         print('\n')
 
@@ -231,7 +249,8 @@ class MoveCopier:
             self.__updateTransition(src_move_id, indexesOfAddedMoves[i])
 
             # Creating extraprops list
-            print('Creating Extraprop list at idx: %d for move %d - %s' % (len(self.__dstMvst['extra_move_properties']), indexesOfAddedMoves[i], self.__dependent_id_name[src_move_id]))
+            print('Creating Extraprop list at idx: %d for move %d - %s' %
+                  (len(self.__dstMvst['extra_move_properties']), indexesOfAddedMoves[i], self.__dependent_id_name[src_move_id]))
             self.__createExtramovePropertiesList(src_move_id, new_move_id)
 
             # Get source move
@@ -243,7 +262,8 @@ class MoveCopier:
 
             # if their names aren't equal, break
             if src_move['name'] != new_move['name']:
-                raise BaseException('move Name not equal\nSource: %s\nNew: %s' % (src_move['name'], new_move['name']))
+                raise BaseException('move Name not equal\nSource: %s\nNew: %s' % (
+                    src_move['name'], new_move['name']))
 
             # Get cancel index of src move
             src_move_cancel_idx = src_move['cancel_idx']
@@ -252,8 +272,10 @@ class MoveCopier:
             new_move_cancel_idx = len(self.__dstMvst['cancels'])
 
             # Copy Cancels
-            print('Creating cancel list at idx: %d for move %d - %s' % (new_move['cancel_idx'], new_move_id, new_move['name']))
-            size_of_new_cancel_list = self.__copyCancelList(src_move_cancel_idx)
+            print('Creating cancel list at idx: %d for move %d - %s' %
+                  (new_move['cancel_idx'], new_move_id, new_move['name']))
+            size_of_new_cancel_list = self.__copyCancelList(
+                src_move_cancel_idx)
 
             # Assigning index to move whose cancel list was just created
             self.__dstMvst['moves'][new_move_id]['cancel_idx'] = new_move_cancel_idx
@@ -263,10 +285,12 @@ class MoveCopier:
                 self.__dstMvst['moves'][j]['cancel_idx'] += size_of_new_cancel_list
 
             # Creating hit conditions & reaction lists
-            print('Creating Hit Condition list at idx: %d for move %d - %s' % (len(self.__dstMvst['hit_conditions']), new_move_id, new_move['name']))
-            new_move['hit_condition_idx'] = self.__createHitCondition(src_move['hit_condition_idx'])
+            print('Creating Hit Condition list at idx: %d for move %d - %s' %
+                  (len(self.__dstMvst['hit_conditions']), new_move_id, new_move['name']))
+            new_move['hit_condition_idx'] = self.__createHitCondition(
+                src_move['hit_condition_idx'])
             print('\n')
-        
+
         after = {}
         for i in keys:
             after[i] = len(self.__dstMvst[i])
@@ -280,7 +304,8 @@ class MoveCopier:
         new_move = self.__dstMvst['moves'][new_move_id]
         if new_move['transition'] >= 0x8000:
             return
-        new_move['transition'] = getMoveID(self.__dstMvst, getMoveName(self.__srcMvst, new_move['transition']))
+        new_move['transition'] = getMoveID(
+            self.__dstMvst, getMoveName(self.__srcMvst, new_move['transition']))
         return
 
     def __softCopyMove(self, move_id: int):
@@ -293,7 +318,7 @@ class MoveCopier:
         new_move['hit_condition_idx'] = 0
         new_move['extra_properties_idx'] = -1
         new_move['u8_2'] = self.__dstMvst['aliases'][-1]
-        new_move['u8'] = len(self.__dstMvst['moves']) - new_move['u8_2'] + 2
+        new_move['u8'] = len(self.__dstMvst['moves']) - new_move['u8_2'] + 1
 
         # Assigning idx
         new_move['cancel_idx'] = len(self.__dstMvst['cancels'])
@@ -302,11 +327,13 @@ class MoveCopier:
         self.__dstMvst['moves'].append(new_move)
 
         # Fixing u15
-        # new_move['u15'] = convertU15(new_move['u15'])
+        if self.__srcMvst['version'] != 'Tekken7':
+            new_move['u15'] = convertU15(new_move['u15'])
 
         # Copying voice-clip
         voiceclip_idx = new_move['voiceclip_idx']
-        new_move['voiceclip_idx'] = self.__createNewVoiceclipList(voiceclip_idx)
+        new_move['voiceclip_idx'] = self.__createNewVoiceclipList(
+            voiceclip_idx)
 
         return len(self.__dstMvst['moves'])-1
 
@@ -371,10 +398,13 @@ class MoveCopier:
             print('[REACTION] Requirement list created at idx: %d' % req_idx)
 
             # Get new reaction list idx
-            reactionList = getReactionList(self.__srcMvst, hit_cond['reaction_list_idx'])
-            hit_cond['reaction_list_idx'] = self.__createReactionList(reactionList)
-            print('Reaction list created at idx: %d' % hit_cond['reaction_list_idx'])
-            
+            reactionList = getReactionList(
+                self.__srcMvst, hit_cond['reaction_list_idx'])
+            hit_cond['reaction_list_idx'] = self.__createReactionList(
+                reactionList)
+            print('Reaction list created at idx: %d' %
+                  hit_cond['reaction_list_idx'])
+
             # Append new hit condition
             self.__dstMvst['hit_conditions'].append(hit_cond)
 
@@ -391,7 +421,8 @@ class MoveCopier:
         for key in reaction_keys:
             moveID = getMoveID(self.__dstMvst, reactionlist[key])
             if moveID == -1:
-                raise Exception('move "%s" not found while creating reaction list' % reactionlist[key])
+                raise Exception(
+                    'move "%s" not found while creating reaction list' % reactionlist[key])
             reactionlist[key] = moveID
 
         searchFlag = True
@@ -400,11 +431,14 @@ class MoveCopier:
         pushback_list = reactionlist['pushback_list']
         del reactionlist['pushback_list']
         for i, pushback_data in enumerate(pushback_list):
-            pushback_idx = reactionlist['pushback_indexes'][i] # Old pushback_index
-            pushback_idx, flag = self.__getPushbackIdx(pushback_data, pushback_idx, i)
+            # Old pushback_index
+            pushback_idx = reactionlist['pushback_indexes'][i]
+            pushback_idx, flag = self.__getPushbackIdx(
+                pushback_data, pushback_idx, i)
             if not flag:
                 searchFlag = False
-            reactionlist['pushback_indexes'][i] = pushback_idx # Assigning new pushback index
+            # Assigning new pushback index
+            reactionlist['pushback_indexes'][i] = pushback_idx
 
         if searchFlag:
             new_idx = search([reactionlist], self.__dstMvst['reaction_list'])
@@ -453,14 +487,15 @@ class MoveCopier:
 
     def __updateMoveID(self, new_cancel):
         if (new_cancel['command'] == 0x800b):
-            return
+            return False
 
         if new_cancel['move_id'] >= 0x8000:
-            return
+            return False
 
         new_cancel['move_id'] = getMoveID(
             self.__dstMvst, getMoveName(self.__srcMvst, new_cancel['move_id']))
-        return
+
+        return new_cancel['move_id'] == -1
 
     def __checkCommand(self, cancel):
         command = cancel['command']
@@ -510,15 +545,20 @@ class MoveCopier:
 
             # Update extradata
             extradata_value = self.__srcMvst['cancel_extradata'][src_cancel['extradata_idx']]
-            new_cancel['extradata_idx'] = findExtradataIndex(extradata_value, self.__dstMvst)
+            new_cancel['extradata_idx'] = findExtradataIndex(
+                extradata_value, self.__dstMvst)
 
             # Update move ID
-            self.__updateMoveID(new_cancel)
+            if self.__updateMoveID(new_cancel):
+                src_cancel_idx += 1
+                continue
 
             # Update requirement_idx
             reqList = getReqList(self.__srcMvst, src_cancel['requirement_idx'])
-            new_cancel['requirement_idx'] = self.__createRequirementsList(reqList)
-            print('Requirement list created at idx: %d' % new_cancel['requirement_idx'])
+            new_cancel['requirement_idx'] = self.__createRequirementsList(
+                reqList)
+            print('Requirement list created at idx: %d' %
+                  new_cancel['requirement_idx'])
 
             # Update the new cancel into 'cancels' list
             self.__dstMvst['cancels'].append(new_cancel)
@@ -538,12 +578,9 @@ def copyMovesAcrossMovesets(sourceMvst: dict, destMvst: dict, targetMoveName: st
     copierObj = MoveCopier(sourceMvst, destMvst,
                            moveDependency_name_id, moveDependency_id_name)
     copierObj.CopyAllDependentMoves()
-    # for _, id in enumerate(moveDependency_id_name):
-    #     print(id, moveDependency_id_name[id])
     print("Done copying %s and all of it's dependencies" % targetMoveName)
-    # path = r"C:\Users\alikh\Documents\TekkenMovesetExtractor\extracted_chars\t7_JIN_TEST"
     path = r"./"
-    # saveJson('%s/%s_new.json' % (path, destMvst['character_name']), destMvst)
+    saveJson('%s/%s.json' % (path, destMvst['character_name']), destMvst)
 
 
 def main():
@@ -574,13 +611,14 @@ def main():
 
 
 def test():
-    srcMvst = loadJson('./tag2_JIN.json')
-    dstMvst = loadJson('./t7_JIN.json')
-    movName = 'JIN_up03'
+    srcMvst = loadJson('./t7_DEVIL_JIN.json')
+    dstMvst = loadJson('./t7_JIN_500_2.json')
+    # movName = 'JIN_up03'
+    movName = 'Dj_lusako'
     copyMovesAcrossMovesets(srcMvst, dstMvst, movName)
 
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
     # print('STILL Work in Progress')
