@@ -1,9 +1,13 @@
 # TekkenMoveCopier
-Python scripts to safely copy moves from across Tekken games (7 for now)
+Python scripts to safely copy moves from across Tekken games (7 & Tag 2 for now)
 
 # How to use?
 ```
-python moveCopier.py sourceMovesetJsonPath TargetMovesetJsonPath moveName
+python moveCopier.py <sourceMovesetJsonPath> <TargetMovesetJsonPath> <moveName>
+```
+## If you want to only print the dependencies, run this command instead
+```
+python moveDependencies.py <sourceMovesetJsonPath> <TargetMovesetJsonPath> <moveName>
 ```
 ## Example
 ```
