@@ -20,19 +20,14 @@ def saveJson(filename, movesetData):
     return
 
 
-def search(pat, txt, start=0):
-    M = len(pat)
-    N = len(txt)
-    for i in range(start, N - M + 1):
-        j = 0
-        while(j < M):
-            if (txt[i + j] != pat[j]):
-                break
-            j += 1
-        if (j == M):
+def findIndex(mylist, pattern, start=0):
+    n = len(mylist)
+    if start < 0 or start > n:
+        start = 0
+    for i in range(start, n):
+        if mylist[i] == pattern[0] and mylist[i:i+n] == pattern:
             return i
     return -1
-
 
 def subfinder(mylist, pattern):
     matches = []
@@ -84,7 +79,7 @@ def getMoveID(moveset: dict, movename: str, start=0):
     return -1
 
 
-def getVoiceclipList(moveset, idx: int) -> list:
+def getVoiceclips(moveset, idx: int) -> list:
     if idx >= len(moveset['voiceclips']):
         raise BaseException('Invalid voiceclip index passed: %d' % idx)
 
@@ -98,19 +93,20 @@ def getVoiceclipList(moveset, idx: int) -> list:
         i += 1
     return list
 
+paramProps = [0x81dc]
 
 def isLast(prop):
     return 0 == prop['id'] and 0 == prop['type'] and 0 == prop['value']
 
 
-def getExtrapropsList(moveset, idx: int) -> list:
+def getExtraprops(moveset, idx: int) -> list:
     if idx >= len(moveset['extra_move_properties']):
         raise BaseException(
             'Invalid extra move properties index passed: %d' % idx)
 
     list = []
     while True:
-        prop = moveset['extra_move_properties'][idx]
+        prop = deepcopy(moveset['extra_move_properties'][idx])
         list.append(prop)
         if isLast(prop):
             break
@@ -130,17 +126,13 @@ def getInputSequence(moveset, idx: int) -> list:
     return sequence
 
 
-def getReqList(moveset, idx: int) -> list:
+def getRequirements(moveset, idx: int) -> list:
     if idx >= len(moveset['requirements']):
         raise BaseException('Invalid requirements list index passed: %d' % idx)
 
     list = []
     while True:
         requirement = deepcopy(moveset['requirements'][idx])
-        req, param = getRequirementAlias(
-            moveset['version'], requirement['req'], requirement['param'])
-        requirement['req'] = req
-        requirement['param'] = param
         list.append(requirement)
         if (requirement['req'] == 881):  # TODO: Replace 881 with game end req val
             break
@@ -148,7 +140,7 @@ def getReqList(moveset, idx: int) -> list:
     return list
 
 
-def getReactionList(moveset, idx: int) -> dict:
+def getReactions(moveset, idx: int) -> dict:
     if idx >= len(moveset['reaction_list']):
         raise BaseException('Invalid reaction list index passed: %d' % idx)
 
@@ -217,7 +209,7 @@ class MoveCopier:
 
     def __get881ReqIdx(self) -> int:
         end = [{"req": 881, "param": 0}, {"req": 881, "param": 0}]
-        return search(end, self.__dstMvst['requirements'])
+        return findIndex(end, self.__dstMvst['requirements'])
         # return self.__srcMvst['hit_conditions'][1]['requirement_idx']
 
     def CopyAllDependentMoves(self):
@@ -251,7 +243,7 @@ class MoveCopier:
             # Creating extraprops list
             print('Creating Extraprop list at idx: %d for move %d - %s' %
                   (len(self.__dstMvst['extra_move_properties']), indexesOfAddedMoves[i], self.__dependent_id_name[src_move_id]))
-            self.__createExtramovePropertiesList(src_move_id, new_move_id)
+            self.__createExtramoveProperties(src_move_id, new_move_id)
 
             # Get source move
             src_move = self.__srcMvst['moves'][src_move_id]
@@ -287,7 +279,7 @@ class MoveCopier:
             # Creating hit conditions & reaction lists
             print('Creating Hit Condition list at idx: %d for move %d - %s' %
                   (len(self.__dstMvst['hit_conditions']), new_move_id, new_move['name']))
-            new_move['hit_condition_idx'] = self.__createHitCondition(
+            new_move['hit_condition_idx'] = self.__createHitConditions(
                 src_move['hit_condition_idx'])
             print('\n')
 
@@ -332,21 +324,27 @@ class MoveCopier:
 
         # Copying voice-clip
         voiceclip_idx = new_move['voiceclip_idx']
-        new_move['voiceclip_idx'] = self.__createNewVoiceclipList(
+        new_move['voiceclip_idx'] = self.__createNewVoiceclips(
             voiceclip_idx)
 
         return len(self.__dstMvst['moves'])-1
 
-    def __createNewVoiceclipList(self, voiceclip_idx):
+    def __createNewVoiceclips(self, voiceclip_idx):
         if voiceclip_idx == -1:
             return -1
-        new_list = getVoiceclipList(self.__srcMvst, voiceclip_idx)
+        new_list = getVoiceclips(self.__srcMvst, voiceclip_idx)
         voiceclip_idx = len(self.__dstMvst['voiceclips'])
         for value in new_list:
             self.__dstMvst['voiceclips'].append(value)
         return voiceclip_idx
 
-    def __createExtramovePropertiesList(self, src_move_id, new_move_id):
+    def __getExtrapropParamAlias(self, id: int, value: int):
+        moveName = self.__srcMvst['moves'][value]['name']
+        moveID = getMoveID(self.__dstMvst, moveName)
+        value = moveID if moveID != -1 else value
+        return value
+
+    def __createExtramoveProperties(self, src_move_id, new_move_id):
         # Get moves
         new_move = self.__dstMvst['moves'][new_move_id]
         src_move = self.__srcMvst['moves'][src_move_id]
@@ -355,7 +353,7 @@ class MoveCopier:
         src_props_idx = src_move['extra_properties_idx']
         if src_props_idx == -1:
             return
-        src_props_list = getExtrapropsList(self.__srcMvst, src_props_idx)
+        src_props_list = getExtraprops(self.__srcMvst, src_props_idx)
 
         # Create T7 equivalent of it
         new_props_list = []
@@ -364,7 +362,10 @@ class MoveCopier:
             type, id, value = getMoveExtrapropAlias(
                 self.__srcMvst['version'], type, id, value)
             if id == None:
+                new_props_list.append({'id': 0, 'type': 0, 'value': 0})
                 break
+            if id in paramProps:
+                id = self.__getExtrapropParamAlias(id, value)
             new_props_list.append({'id': id, 'type': type, 'value': value})
 
         # Assigning index
@@ -374,33 +375,40 @@ class MoveCopier:
 
         return new_index
 
-    def __createRequirementsList(self, reqList):
-        idx = search(reqList, self.__dstMvst['requirements'])
+    def __createRequirements(self, reqList):
+        # Getting aliases
+        for item in reqList:
+            req, param = getRequirementAlias(self.__srcMvst['version'], item['req'], item['param'])
+            item['req'] = req
+            if req in paramProps: param = self.__getExtrapropParamAlias(req, param)
+            item['param'] = param
+
+        idx = findIndex(reqList, self.__dstMvst['requirements'])
         if idx == -1:
             idx = len(self.__dstMvst['requirements'])
             for req in reqList:
                 self.__dstMvst['requirements'].append(req)
         return idx
 
-    def __createHitCondition(self, src_hit_idx: int) -> int:
+    def __createHitConditions(self, src_hit_idx: int) -> int:
         if src_hit_idx == 0:
             return 0
         req881 = self.__get881ReqIdx()
         new_idx = len(self.__dstMvst['hit_conditions'])
         while True:
             hit_cond = deepcopy(self.__srcMvst['hit_conditions'][src_hit_idx])
-            reqList = getReqList(self.__srcMvst, hit_cond['requirement_idx'])
+            reqList = getRequirements(self.__srcMvst, hit_cond['requirement_idx'])
             if (reqList == [{'req': 881, 'param': 0}]):
                 req_idx = req881
             else:
-                req_idx = self.__createRequirementsList(reqList)
+                req_idx = self.__createRequirements(reqList)
             hit_cond['requirement_idx'] = req_idx
             print('[REACTION] Requirement list created at idx: %d' % req_idx)
 
             # Get new reaction list idx
-            reactionList = getReactionList(
+            reactionList = getReactions(
                 self.__srcMvst, hit_cond['reaction_list_idx'])
-            hit_cond['reaction_list_idx'] = self.__createReactionList(
+            hit_cond['reaction_list_idx'] = self.__createReactions(
                 reactionList)
             print('Reaction list created at idx: %d' %
                   hit_cond['reaction_list_idx'])
@@ -416,7 +424,7 @@ class MoveCopier:
 
         return new_idx
 
-    def __createReactionList(self, reactionlist: dict) -> int:
+    def __createReactions(self, reactionlist: dict) -> int:
         # Replace move names with move IDs
         for key in reaction_keys:
             moveID = getMoveID(self.__dstMvst, reactionlist[key])
@@ -441,7 +449,7 @@ class MoveCopier:
             reactionlist['pushback_indexes'][i] = pushback_idx
 
         if searchFlag:
-            new_idx = search([reactionlist], self.__dstMvst['reaction_list'])
+            new_idx = findIndex([reactionlist], self.__dstMvst['reaction_list'])
             if new_idx != -1:
                 return new_idx
 
@@ -475,7 +483,7 @@ class MoveCopier:
             return new_idx, True
         for idx in indexes:
             pushback_dict['pushbackextra_idx'] = idx
-            new_idx = search([pushback_dict], self.__dstMvst['pushbacks'])
+            new_idx = findIndex([pushback_dict], self.__dstMvst['pushbacks'])
             if new_idx != -1:
                 self.pushback_aliases[pushback_idx] = new_idx
                 return new_idx, True
@@ -554,8 +562,8 @@ class MoveCopier:
                 continue
 
             # Update requirement_idx
-            reqList = getReqList(self.__srcMvst, src_cancel['requirement_idx'])
-            new_cancel['requirement_idx'] = self.__createRequirementsList(
+            reqList = getRequirements(self.__srcMvst, src_cancel['requirement_idx'])
+            new_cancel['requirement_idx'] = self.__createRequirements(
                 reqList)
             print('Requirement list created at idx: %d' %
                   new_cancel['requirement_idx'])
