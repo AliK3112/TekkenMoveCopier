@@ -110,7 +110,8 @@ class MoveDependencies:
     def __get881ReqIdx(self) -> int:
         return self.__srcMvst['hit_conditions'][1]['requirement_idx']
         # end = [{"req": 881, "param": 0}, {"req": 881, "param": 0}]
-        # return search(end, self.__srcMvst['requirements'])
+        # idx = search(end, self.__srcMvst['requirements'])
+        # return idx + 1 if idx != -1 else idx
 
     def __getTransitionDependencies(self, moveID: int, stack: list):
         transition = self.__srcMvst['moves'][moveID]['transition']
@@ -127,7 +128,6 @@ class MoveDependencies:
                 self.__dependent_id_name[transition] = nextMoveName
 
                 # recursive re-call for the move we just found
-                # self.__checkDependencies(nextMoveId)
                 stack.append(nextMoveId)
         return
 
@@ -164,7 +164,6 @@ class MoveDependencies:
                     self.__dependent_id_name[nextMoveId] = nextMoveName
 
                     # recursive re-call for the move we just found
-                    # self.__checkDependencies(nextMoveId)
                     stack.append(nextMoveId)
 
             if cancel['command'] == 0x8000:
@@ -205,9 +204,6 @@ class MoveDependencies:
                         self.__dependent_id_name[reactionList[key]
                                                  ] = nextMoveName
                         self.__dependency_name_id[nextMoveName] = reactionList[key]
-
-                        # recursive re-call for the move we just found
-                        # self.__checkDependencies(nextMoveId)
 
                         # add into stack
                         stack.append(nextMoveId)
