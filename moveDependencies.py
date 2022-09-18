@@ -44,7 +44,10 @@ def isSameInDifferentGame(moveset1, moveset2):
 def getMoveName(moveset, move_id: int):
     if move_id >= 0x8000:
         move_id = moveset['aliases'][move_id-0x8000]
-    return moveset['moves'][move_id]['name']
+    try:
+        return moveset['moves'][move_id]['name']
+    except:
+        return ""
 
 
 def getMoveID(moveset, movename: str):
@@ -67,6 +70,10 @@ class MoveDependencies:
         if getMoveID(dstMvst, targetMoveName) != -1:
             raise BaseException(
                 'The move \"%s\" already exists within destination moveset' % targetMoveName)
+        self.aliases = loadJson('copy_aliases.json')
+        if self.aliases == None:
+            print(
+                '[DEPENDENCY CHECKER] No aliases loaded from "copy_aliases.json"')
 
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
@@ -84,7 +91,7 @@ class MoveDependencies:
         stack = [self.__srcMoveId]
         while stack:
             moveID = stack.pop(0)
-            if (moveID == 1631):
+            if (getMoveName(self.__srcMoveId, moveID) in self.aliases['forbidden_moves']):
                 name = self.__dependent_id_name[moveID]
                 del self.__dependent_id_name[moveID]
                 del self.__dependency_name_id[name]
@@ -94,10 +101,6 @@ class MoveDependencies:
             self.__getReactionListDependencies(moveID, stack)
 
     def getDependencies(self):
-        # self.__dependency_name_id = collections.OrderedDict(
-        #     sorted(self.__dependency_name_id.items()))
-        # self.__dependent_id_name = collections.OrderedDict(
-        #     sorted(self.__dependent_id_name.items()))
         self.__checkDependencies()
         return self.__dependency_name_id, self.__dependent_id_name
 

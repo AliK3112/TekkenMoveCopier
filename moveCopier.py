@@ -29,6 +29,7 @@ def findIndex(mylist, pattern, start=0):
             return i
     return -1
 
+
 def subfinder(mylist, pattern):
     matches = []
     for i in range(len(mylist)):
@@ -93,7 +94,9 @@ def getVoiceclips(moveset, idx: int) -> list:
         i += 1
     return list
 
+
 paramProps = [0x81dc]
+
 
 def isLast(prop):
     return 0 == prop['id'] and 0 == prop['type'] and 0 == prop['value']
@@ -190,22 +193,16 @@ class MoveCopier:
         if dstMvst['version'] != 'Tekken7':
             raise BaseException(
                 'Destination Moveset is Not a Tekken 7 moveset. version =', dstMvst['version'])
+        self.__aliases = loadJson('copy_aliases.json')
+        if self.__aliases == None:
+            print(
+                '[MOVE COPIER] No aliases loaded from the JSON file.')
 
         self.__srcMvst = sourceMvst
         self.__dstMvst = dstMvst
         self.__dependency_name_id = dependency_name_id
         self.__dependent_id_name = dependency_id_name
-        self.pushback_aliases = {}
-        self.group_cancel_aliases = {}
-
-        try:
-            with open('copy_aliases1.txt', 'r') as f:
-                lines = f.read().replace('\n', '')
-                obj = json.loads(lines)
-                self.group_cancel_aliases = obj['group_cancel_aliases']
-        except:
-            print('ERROR WHILE READING FILE')
-            self.group_cancel_aliases = {}
+        self.__pushback_aliases = {}
 
     def __get881ReqIdx(self) -> int:
         end = [{"req": 881, "param": 0}, {"req": 881, "param": 0}]
@@ -378,9 +375,15 @@ class MoveCopier:
     def __createRequirements(self, reqList):
         # Getting aliases
         for item in reqList:
-            req, param = getRequirementAlias(self.__srcMvst['version'], item['req'], item['param'])
-            item['req'] = req
-            if req in paramProps: param = self.__getExtrapropParamAlias(req, param)
+            # Checking "copy_aliases.json"
+            if str(item['req']) in self.__aliases['requirements']:
+                item['req'] = self.__aliases['requirements'][item['req']]
+            else:
+                req, param = getRequirementAlias(
+                    self.__srcMvst['version'], item['req'], item['param'])
+                item['req'] = req
+            if req in paramProps:
+                param = self.__getExtrapropParamAlias(req, param)
             item['param'] = param
 
         idx = findIndex(reqList, self.__dstMvst['requirements'])
@@ -397,7 +400,8 @@ class MoveCopier:
         new_idx = len(self.__dstMvst['hit_conditions'])
         while True:
             hit_cond = deepcopy(self.__srcMvst['hit_conditions'][src_hit_idx])
-            reqList = getRequirements(self.__srcMvst, hit_cond['requirement_idx'])
+            reqList = getRequirements(
+                self.__srcMvst, hit_cond['requirement_idx'])
             if (reqList == [{'req': 881, 'param': 0}]):
                 req_idx = req881
             else:
@@ -449,7 +453,8 @@ class MoveCopier:
             reactionlist['pushback_indexes'][i] = pushback_idx
 
         if searchFlag:
-            new_idx = findIndex([reactionlist], self.__dstMvst['reaction_list'])
+            new_idx = findIndex(
+                [reactionlist], self.__dstMvst['reaction_list'])
             if new_idx != -1:
                 return new_idx
 
@@ -478,14 +483,14 @@ class MoveCopier:
             self.__dstMvst['pushbacks'].append(pushback_dict)
             return new_idx, False
 
-        if pushback_idx in self.pushback_aliases:
-            new_idx = self.pushback_aliases[pushback_idx]
+        if pushback_idx in self.__pushback_aliases:
+            new_idx = self.__pushback_aliases[pushback_idx]
             return new_idx, True
         for idx in indexes:
             pushback_dict['pushbackextra_idx'] = idx
             new_idx = findIndex([pushback_dict], self.__dstMvst['pushbacks'])
             if new_idx != -1:
-                self.pushback_aliases[pushback_idx] = new_idx
+                self.__pushback_aliases[pushback_idx] = new_idx
                 return new_idx, True
 
         # If after complete search, the pushback_idx is still -1, then add new
@@ -509,13 +514,13 @@ class MoveCopier:
         command = cancel['command']
         # Group Cancel
         if command == 0x800b:
-            for item in self.group_cancel_aliases:
+            for item in self.__aliases['group_cancels']:
                 if item['move_id'] == cancel['move_id'] and item['starting_frame'] == cancel['starting_frame']:
                     if not item['alias']:
                         continue
                     cancel['move_id'] = item['alias']['move_id']
                     cancel['starting_frame'] = item['alias']['starting_frame']
-                    break
+                    return False
             return True
 
         # Input sequence
@@ -562,7 +567,8 @@ class MoveCopier:
                 continue
 
             # Update requirement_idx
-            reqList = getRequirements(self.__srcMvst, src_cancel['requirement_idx'])
+            reqList = getRequirements(
+                self.__srcMvst, src_cancel['requirement_idx'])
             new_cancel['requirement_idx'] = self.__createRequirements(
                 reqList)
             print('Requirement list created at idx: %d' %
