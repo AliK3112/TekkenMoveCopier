@@ -16,6 +16,7 @@ python moveCopier.py ./t7_JIN.json ./tag2_JIN.json JIN_up03
 
 ## How to forbid some moves from being copied-over?
 Pretty simple. The tool supports a "copy_aliases.json" file which contains info about group cancels, forbidden moves & requirement indices.
+Place it in the same directory and use the format shown below to add entries to it.
 ![copy_aliases.json Format](https://user-images.githubusercontent.com/83224003/190888148-033ae5d6-0c8c-4a7a-9ac5-54fb8789931d.png)
 
 
