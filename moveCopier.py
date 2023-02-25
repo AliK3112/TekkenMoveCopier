@@ -89,13 +89,13 @@ def getVoiceclips(moveset, idx: int) -> list:
     while True:
         voiceclip = moveset['voiceclips'][i]
         list.append(voiceclip)
-        if voiceclip == 4294967295:
+        if voiceclip == 0xFFFFFFFF:
             break
         i += 1
     return list
 
 
-paramProps = [0x81dc]
+paramProps = [0x81d4, 0x81d5, 0x81dc, 0x83c3]
 
 
 def isLast(prop):
@@ -387,6 +387,7 @@ class MoveCopier:
             item['param'] = param
 
         idx = findIndex(reqList, self.__dstMvst['requirements'])
+        print("req list idx found:", idx)
         if idx == -1:
             idx = len(self.__dstMvst['requirements'])
             for req in reqList:
@@ -594,7 +595,7 @@ def copyMovesAcrossMovesets(sourceMvst: dict, destMvst: dict, targetMoveName: st
     copierObj.CopyAllDependentMoves()
     print("Done copying %s and all of it's dependencies" % targetMoveName)
     path = r"./"
-    saveJson('%s/%s.json' % (path, destMvst['character_name']), destMvst)
+    saveJson('%s/%s_new.json' % (path, destMvst['character_name']), destMvst)
 
 
 def main():
@@ -625,10 +626,11 @@ def main():
 
 
 def test():
-    srcMvst = loadJson('./t7_DEVIL_JIN.json')
-    dstMvst = loadJson('./t7_JIN_500_2.json')
+    srcMvst = loadJson('./tag2_KAZUYA.json')
+    dstMvst = loadJson('./t7_KAZUYA.json')
     # movName = 'JIN_up03'
-    movName = 'Dj_lusako'
+    # movName = 'Dj_lusako'
+    movName = 'Kz_rsako'
     copyMovesAcrossMovesets(srcMvst, dstMvst, movName)
 
 
