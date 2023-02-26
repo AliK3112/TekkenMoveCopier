@@ -69,6 +69,10 @@ def getMoveID(moveset, movename: str):
     return -1
 
 paramProps = [0x81d4, 0x81d5, 0x81dc, 0x83c3]
+forbiddenMoves = ["Kz_rsakoT", "Kz_rsakoDA"]
+
+def isTagMove (movename: str):
+    return movename.find("Chg") != -1
 
 class MoveDependencies:
     def __init__(self, sourceMvst: dict, dstMvst: dict, targetMoveName: str):
@@ -106,11 +110,11 @@ class MoveDependencies:
         while stack:
             moveID = stack.pop(0)
             move = self.__srcMvst['moves'][moveID]
-            # if (getMoveName(self.__srcMoveId, moveID) in self.aliases['forbidden_moves']):
-            #     name = self.__dependent_id_name[moveID]
-            #     del self.__dependent_id_name[moveID]
-            #     del self.__dependency_name_id[name]
-            #     continue
+            moveName = move['name']
+            if moveName in forbiddenMoves or isTagMove(moveName):
+                del self.__dependent_id_name[moveID]
+                del self.__dependency_name_id[moveName]
+                continue
             self.__getTransitionDependencies(move, stack)
             self.__getCancelDependencies(move, stack)
             self.__getExtrapropDependencies(move, stack)
